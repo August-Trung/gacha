@@ -1,9 +1,5 @@
 <template>
-  <div
-    class="hero-card"
-    :class="[factionClass, rarityClass, { 'is-detailed': isDetailed }]"
-    @click="toggleDetailed"
-  >
+  <div class="hero-card" :class="[factionClass, rarityClass]" @click="$emit('show-details', hero)">
     <div class="card-bg"></div>
     <div class="card-rarity">{{ hero.rarity }}</div>
     <div class="card-faction">{{ hero.faction }}</div>
@@ -18,38 +14,21 @@
         <span>ATK: {{ hero.atk }}</span>
         <span>SPD: {{ hero.spd }}</span>
       </div>
-      <div class="faction-bonus-info" v-if="isDetailed">
-        <div class="title">Bonus phe</div>
-        <ul>
-          <li>2 tướng: +5% ATK, HP</li>
-          <li>3 tướng: +10% ATK, HP</li>
-          <li>4 tướng: +20% ATK, HP</li>
-          <li>5 tướng: +30% ATK, HP</li>
-        </ul>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { factionColor } from '../data/heroes'
-
+import { computed } from 'vue'
 const props = defineProps({
   hero: Object,
 })
-
-const isDetailed = ref(false)
-
+const emit = defineEmits(['show-details'])
 const factionClass = computed(
   () => `faction-${props.hero.faction.toLowerCase().replace(/\s/g, '')}`,
 )
 const rarityClass = computed(() => `rarity-${props.hero.rarity.toLowerCase()}`)
 const classIcon = computed(() => `icon-${props.hero.class.toLowerCase().replace(/\s/g, '')}`)
-
-function toggleDetailed() {
-  isDetailed.value = !isDetailed.value
-}
 </script>
 
 <style scoped>
@@ -69,8 +48,6 @@ function toggleDetailed() {
   transition: all 0.2s;
   cursor: pointer;
 }
-
-/* Base styles for faction colors and borders */
 .faction-ngụy {
   border: 2px solid #3b82f6;
 }
@@ -86,8 +63,6 @@ function toggleDetailed() {
 .faction-bóngtối {
   border: 2px solid #8b5cf6;
 }
-
-/* Background gradients for factions */
 .card-bg {
   position: absolute;
   top: 0;
@@ -112,8 +87,6 @@ function toggleDetailed() {
 .faction-bóngtối .card-bg {
   background-image: linear-gradient(135deg, #ede9fe, #8b5cf650);
 }
-
-/* Rarity specific border effects (layered on top) */
 .hero-card::after {
   content: '';
   position: absolute;
@@ -122,11 +95,9 @@ function toggleDetailed() {
   right: -2px;
   bottom: -2px;
   border-radius: 12px;
-  z-index: 1; /* Ensure this is above the card background */
+  z-index: 1;
   pointer-events: none;
 }
-
-/* SS Rarity - Fire Effect */
 .rarity-ss::after {
   box-shadow:
     0 0 5px #ff9800,
@@ -150,8 +121,6 @@ function toggleDetailed() {
       0 0 10px #ff5722;
   }
 }
-
-/* S Rarity - Sparkle Effect */
 .rarity-s::after {
   box-shadow:
     0 0 2px #f97316,
@@ -171,11 +140,8 @@ function toggleDetailed() {
       inset 0 0 5px #f97316;
   }
 }
-
-/* SSS Rarity - Special Lightning Border Effect (Restored) */
 .rarity-sss {
   position: relative;
-  /* Add the SSS-specific animated shadow to the main card */
   animation: sss-lightning 1.5s infinite alternate;
 }
 .rarity-sss::before {
@@ -190,8 +156,6 @@ function toggleDetailed() {
   animation: sss-lightning-effect 1.5s infinite alternate;
   pointer-events: none;
 }
-
-/* Keyframes for SSS effects */
 @keyframes sss-lightning {
   from {
     box-shadow:
@@ -241,8 +205,6 @@ function toggleDetailed() {
       0 0 15px #fffbe0;
   }
 }
-
-/* Other shared styles */
 .card-rarity {
   position: absolute;
   top: 5px;
@@ -255,7 +217,6 @@ function toggleDetailed() {
   color: #fff;
   z-index: 2;
 }
-
 .card-faction {
   position: absolute;
   top: 5px;
@@ -269,7 +230,6 @@ function toggleDetailed() {
   z-index: 2;
   text-transform: uppercase;
 }
-
 .card-icon {
   position: absolute;
   top: 8px;
@@ -295,7 +255,6 @@ function toggleDetailed() {
 .icon-thíchkhách {
   background-image: url('http://googleusercontent.com/file_content/5');
 }
-
 .card-content {
   position: relative;
   z-index: 1;
@@ -309,7 +268,6 @@ function toggleDetailed() {
   height: 100%;
   box-sizing: border-box;
 }
-
 .card-stars {
   font-size: 10px;
   margin-bottom: 2px;
@@ -326,31 +284,5 @@ function toggleDetailed() {
   align-items: center;
   margin-top: 4px;
   line-height: 1.2;
-}
-
-.faction-bonus-info {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  padding: 5px;
-  box-sizing: border-box;
-  font-size: 8px;
-  text-align: left;
-}
-.faction-bonus-info .title {
-  font-weight: bold;
-  font-size: 9px;
-  margin-bottom: 2px;
-}
-.faction-bonus-info ul {
-  list-style-type: none;
-  margin: 0;
-  padding: 0;
-}
-.faction-bonus-info li {
-  line-height: 1;
 }
 </style>

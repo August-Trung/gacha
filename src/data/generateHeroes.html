@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Generator Tướng</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Arial', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        padding: 30px;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .header h1 {
+        color: #2c3e50;
+        font-size: 2.5em;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 10px;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .controls input {
+        padding: 12px 20px;
+        border: 2px solid #ddd;
+        border-radius: 25px;
+        font-size: 1.1em;
+        width: 200px;
+        text-align: center;
+        transition: border-color 0.3s ease;
+      }
+
+      .controls input:focus {
+        border-color: #ff6b6b;
+        outline: none;
+      }
+
+      .generate-btn,
+      .batch-btn,
+      .batch-generate-btn,
+      .export-btn {
+        background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        font-size: 1.1em;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 15px rgba(255, 107, 107, 0.3);
+      }
+
+      .batch-btn {
+        background: linear-gradient(45deg, #3498db, #2980b9);
+        box-shadow: 0 8px 15px rgba(52, 152, 219, 0.3);
+      }
+
+      .batch-generate-btn {
+        background: linear-gradient(45deg, #27ae60, #2ecc71);
+        box-shadow: 0 8px 15px rgba(46, 204, 113, 0.3);
+      }
+
+      .export-btn {
+        background: linear-gradient(45deg, #f39c12, #e67e22);
+        box-shadow: 0 8px 15px rgba(243, 156, 18, 0.3);
+      }
+
+      .generate-btn:hover,
+      .batch-btn:hover,
+      .batch-generate-btn:hover,
+      .export-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 20px rgba(0, 0, 0, 0.2);
+      }
+
+      .generate-btn:active,
+      .batch-btn:active,
+      .batch-generate-btn:active,
+      .export-btn:active {
+        transform: translateY(-1px);
+      }
+
+      .hero-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        border-left: 5px solid;
+      }
+
+      .hero-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .hero-name {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #2c3e50;
+      }
+
+      .hero-rarity {
+        padding: 8px 16px;
+        border-radius: 20px;
+        color: white;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      }
+
+      .hero-info {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+
+      .info-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        border-left: 3px solid #3498db;
+      }
+
+      .info-label {
+        font-weight: bold;
+        color: #2c3e50;
+      }
+
+      .info-value {
+        color: #e74c3c;
+        font-weight: bold;
+      }
+
+      .skills-section {
+        margin-top: 20px;
+      }
+
+      .skills-title {
+        font-size: 1.5em;
+        color: #2c3e50;
+        margin-bottom: 15px;
+        text-align: center;
+      }
+
+      .skill {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-left: 4px solid;
+      }
+
+      .skill-name {
+        font-size: 1.2em;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+
+      .skill-description {
+        color: #555;
+        line-height: 1.5;
+      }
+
+      .skill-stats {
+        margin-top: 10px;
+        font-size: 0.9em;
+        color: #666;
+      }
+
+      /* Rarity colors */
+      .SSS {
+        border-color: #ff0080;
+        background: linear-gradient(45deg, #ff0080, #ff4081);
+      }
+      .SS {
+        border-color: #ff4081;
+        background: linear-gradient(45deg, #ff4081, #f06292);
+      }
+      .S {
+        border-color: #ffb74d;
+        background: linear-gradient(45deg, #ffb74d, #ff8a65);
+      }
+      .A {
+        border-color: #9c27b0;
+        background: linear-gradient(45deg, #9c27b0, #ba68c8);
+      }
+      .B {
+        border-color: #2196f3;
+        background: linear-gradient(45deg, #2196f3, #64b5f6);
+      }
+      .C {
+        border-color: #4caf50;
+        background: linear-gradient(45deg, #4caf50, #81c784);
+      }
+      .D {
+        border-color: #757575;
+        background: linear-gradient(45deg, #757575, #a4a4a4);
+      }
+
+      /* Faction colors */
+      .hero-card.nguy {
+        border-left-color: #e74c3c;
+      }
+      .hero-card.thuc {
+        border-left-color: #f39c12;
+      }
+      .hero-card.ngo {
+        border-left-color: #3498db;
+      }
+      .hero-card.anh-sang {
+        border-left-color: #f1c40f;
+      }
+      .hero-card.bong-toi {
+        border-left-color: #9b59b6;
+      }
+
+      /* Skill type colors */
+      .skill.basic {
+        border-left-color: #95a5a6;
+      }
+      .skill.ultimate {
+        border-left-color: #e74c3c;
+      }
+      .skill.passive {
+        border-left-color: #3498db;
+      }
+      .skill.active-passive {
+        border-left-color: #f39c12;
+      }
+
+      .json-output {
+        background: #2c3e50;
+        color: #ecf0f1;
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 20px;
+        font-family: 'Courier New', monospace;
+        white-space: pre-wrap;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .copy-btn {
+        background: #27ae60;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: background 0.3s ease;
+      }
+
+      .batch-summary {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      }
+
+      .batch-heroes {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+        max-height: 600px;
+        overflow-y: auto;
+        padding: 10px;
+      }
+
+      .hero-card-mini {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid;
+        transition: transform 0.3s ease;
+      }
+
+      .hero-card-mini:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      }
+
+      .hero-mini-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .hero-mini-name {
+        font-size: 1.1em;
+        font-weight: bold;
+        color: #2c3e50;
+      }
+
+      .hero-mini-rarity {
+        padding: 4px 8px;
+        border-radius: 12px;
+        color: white;
+        font-weight: bold;
+        font-size: 0.8em;
+      }
+
+      .hero-mini-info {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        font-size: 0.9em;
+      }
+
+      .mini-stat {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 8px;
+        background: #f8f9fa;
+        border-radius: 6px;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+      }
+
+      .stat-card {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        border-left: 3px solid #3498db;
+      }
+
+      .stat-number {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #e74c3c;
+      }
+
+      .stat-label {
+        color: #7f8c8d;
+        font-size: 0.9em;
+      }
+
+      .progress-bar {
+        background: #ecf0f1;
+        border-radius: 10px;
+        height: 8px;
+        margin: 10px 0;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(45deg, #3498db, #2980b9);
+        transition: width 0.3s ease;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🎮 Generator Tướng RPG</h1>
+        <div class="controls">
+          <input
+            type="number"
+            id="heroCount"
+            value="1"
+            min="1"
+            max="1000"
+            placeholder="Số lượng tướng"
+          />
+          <button class="generate-btn" onclick="generateHeroes()">⚔️ Tạo Tướng</button>
+          <button class="batch-btn" onclick="showBatchControls()">📦 Tạo Hàng Loạt</button>
+        </div>
+        <div id="batchControls" style="display: none; margin-top: 15px">
+          <input
+            type="number"
+            id="batchCount"
+            value="200"
+            min="5"
+            max="1000"
+            placeholder="Số lượng (5-1000)"
+          />
+          <button class="batch-generate-btn" onclick="generateBatch()">🚀 Tạo Hàng Loạt</button>
+          <button class="export-btn" onclick="exportAllToJSON()" style="display: none">
+            📋 Export JSON
+          </button>
+        </div>
+      </div>
+
+      <div id="heroDisplay" style="display: none">
+        <!-- Hero card will be inserted here -->
+      </div>
+
+      <div id="batchResults" style="display: none">
+        <div class="batch-summary">
+          <h3>📊 Thống kê tạo hàng loạt</h3>
+          <div id="summaryStats"></div>
+        </div>
+        <div class="batch-heroes" id="batchHeroes"></div>
+      </div>
+
+      <div id="jsonOutput" style="display: none">
+        <h3>📋 JSON Output:</h3>
+        <div class="json-output" id="jsonContent"></div>
+        <button class="copy-btn" onclick="copyToClipboard()">📋 Copy JSON</button>
+      </div>
+    </div>
+
+    <script>
+      // Game data
+      const rarities = ['SSS', 'SS', 'S', 'A', 'B', 'C', 'D']
+      const factions = ['Ngụy', 'Thục', 'Ngô', 'Ánh sáng', 'Bóng tối']
+      const classes = ['Đấu sĩ', 'Đỡ đòn', 'Pháp sư', 'Thích khách', 'Hỗ trợ']
+
+      // Hero names database
+      const heroNames = {
+        Ngụy: [
+          'Tào Tháo',
+          'Từ Chu',
+          'Điển Vi',
+          'Hạ Hầu Đôn',
+          'Trương Liêu',
+          'Tư Mã Ý',
+          'Quan Vũ Ngụy',
+          'Văn Sính',
+          'Gia Cát Lượng Ngụy',
+        ],
+        Thục: [
+          'Lưu Bị',
+          'Quan Vũ',
+          'Trương Phi',
+          'Triệu Tử Long',
+          'Gia Cát Lượng',
+          'Mã Siêu',
+          'Hoàng Trung',
+          'Ma Đại',
+          'Khương Duy',
+        ],
+        Ngô: [
+          'Tôn Quyền',
+          'Chu Du',
+          'Lục Tốn',
+          'Tôn Sách',
+          'Cam Ninh',
+          'Thái Sử Từ',
+          'Lục Kháng',
+          'Đinh Phụng',
+          'Hoàng Cái',
+        ],
+        'Ánh sáng': [
+          'Thiên thần Gabriel',
+          'Thánh nữ Jeanne',
+          'Hiệp sĩ Arthur',
+          'Pháp sư Merlin',
+          'Valkyrie',
+          'Paladin',
+          'Cleric',
+          'Oracle',
+          'Templar',
+        ],
+        'Bóng tối': [
+          'Zelus',
+          'Bóng ma Wraith',
+          'Necromancer',
+          'Vampire Lord',
+          'Shadow Assassin',
+          'Dark Knight',
+          'Demon',
+          'Warlock',
+          'Death',
+        ],
+      }
+
+      // Skill templates
+      const skillTemplates = {
+        basic: {
+          names: [
+            'Chém ngang',
+            'Đâm thẳng',
+            'Hắc ám cầu',
+            'Tia sáng',
+            'Tấn công cơ bản',
+            'Đấm mạnh',
+            'Bắn tên',
+            'Ma thuật cơ bản',
+            'Heal nhỏ',
+          ],
+          damageRatio: [0.8, 1.0, 1.2],
+          furyGain: [8, 10, 12],
+        },
+        ultimate: {
+          names: [
+            'Hắc ám trừng phạt',
+            'Thiên nộ',
+            'Bão kiếm',
+            'Sấm sét diệt',
+            'Lửa địa ngục',
+            'Băng phong toái',
+            'Ánh sáng thiêng',
+            'Bão tuyết',
+            'Siêu heal',
+          ],
+          damageRatio: [1.8, 2.0, 2.5, 3.0],
+          furyCost: [80, 100, 120],
+        },
+        passive: {
+          names: [
+            'Linh hồn hút máu',
+            'Giáp cường hóa',
+            'Tốc độ ma',
+            'Sức mạnh',
+            'Trí tuệ',
+            'May mắn',
+            'Hồi máu',
+            'Kháng phép',
+            'Né tránh',
+          ],
+          effects: [
+            'lifesteal',
+            'defense',
+            'speed',
+            'attack',
+            'magic',
+            'crit',
+            'regen',
+            'resist',
+            'dodge',
+          ],
+        },
+        activePassive: {
+          names: [
+            'Ám ảnh',
+            'Bùng nổ',
+            'Phản kích',
+            'Hồi sinh',
+            'Berserk',
+            'Tập trung',
+            'Thức tỉnh',
+            'Phản đòn',
+            'Hỗn loạn',
+          ],
+          triggers: [
+            'onLowHp',
+            'onHighHp',
+            'onDamaged',
+            'onKill',
+            'onCrit',
+            'onStart',
+            'onUltimate',
+          ],
+        },
+      }
+
+      // Balanced faction distribution arrays (each faction appears 25 times)
+      const balancedFactions = []
+      factions.forEach((faction) => {
+        for (let i = 0; i < 25; i++) {
+          balancedFactions.push(faction)
+        }
+      })
+
+      let currentHero = null
+      let allGeneratedHeroes = []
+
+      // Create balanced distribution arrays
+      function createBalancedDistribution(total) {
+        const heroesPerFaction = Math.floor(total / 5)
+        const remainder = total % 5
+
+        const distribution = []
+        factions.forEach((faction, index) => {
+          const count = heroesPerFaction + (index < remainder ? 1 : 0)
+          for (let i = 0; i < count; i++) {
+            distribution.push(faction)
+          }
+        })
+
+        // Shuffle the distribution
+        for (let i = distribution.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          ;[distribution[i], distribution[j]] = [distribution[j], distribution[i]]
+        }
+
+        return distribution
+      }
+
+      function createRarityDistribution(total) {
+        // Each rarity appears equally
+        const heroesPerRarity = Math.floor(total / 7)
+        const remainder = total % 7
+
+        const distribution = []
+        rarities.forEach((rarity, index) => {
+          const count = heroesPerRarity + (index < remainder ? 1 : 0)
+          for (let i = 0; i < count; i++) {
+            distribution.push(rarity)
+          }
+        })
+
+        // Shuffle the distribution
+        for (let i = distribution.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          ;[distribution[i], distribution[j]] = [distribution[j], distribution[i]]
+        }
+
+        return distribution
+      }
+
+      function getRandomElement(array) {
+        return array[Math.floor(Math.random() * array.length)]
+      }
+
+      function getRandomValue(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min
+      }
+
+      function generateStats(rarity, heroClass) {
+        const baseStats = {
+          SSS: { atk: [200, 250], hp: [1100, 1400], spd: [120, 140] },
+          SS: { atk: [180, 220], hp: [1000, 1300], spd: [110, 130] },
+          S: { atk: [160, 200], hp: [900, 1200], spd: [100, 120] },
+          A: { atk: [140, 180], hp: [800, 1100], spd: [90, 110] },
+          B: { atk: [120, 160], hp: [700, 1000], spd: [80, 100] },
+          C: { atk: [100, 140], hp: [600, 900], spd: [70, 90] },
+          D: { atk: [80, 120], hp: [500, 800], spd: [60, 80] },
+        }
+
+        const classModifiers = {
+          'Đấu sĩ': { atk: 1.1, hp: 1.0, spd: 0.95 },
+          'Đỡ đòn': { atk: 0.8, hp: 1.3, spd: 0.8 },
+          'Pháp sư': { atk: 1.2, hp: 0.8, spd: 1.0 },
+          'Thích khách': { atk: 1.0, hp: 0.9, spd: 1.2 },
+          'Hỗ trợ': { atk: 0.7, hp: 1.1, spd: 1.1 },
+        }
+
+        const base = baseStats[rarity]
+        const modifier = classModifiers[heroClass]
+
+        return {
+          atk: Math.floor(getRandomValue(base.atk[0], base.atk[1]) * modifier.atk),
+          hp: Math.floor(getRandomValue(base.hp[0], base.hp[1]) * modifier.hp),
+          spd: Math.floor(getRandomValue(base.spd[0], base.spd[1]) * modifier.spd),
+        }
+      }
+
+      function generateBasicSkill() {
+        const template = skillTemplates.basic
+        return {
+          name: getRandomElement(template.names),
+          description: `Tấn công mục tiêu phía trước, gây ${getRandomElement(template.damageRatio) * 100}% sát thương tấn công. Hồi ${getRandomElement(template.furyGain)} nộ.`,
+          type: 'basic',
+          damageRatio: getRandomElement(template.damageRatio),
+          furyGain: getRandomElement(template.furyGain),
+        }
+      }
+
+      function generateUltimateSkill() {
+        const template = skillTemplates.ultimate
+        const damageRatio = getRandomElement(template.damageRatio)
+        const furyCost = getRandomElement(template.furyCost)
+        const isAoe = Math.random() > 0.5
+
+        return {
+          name: getRandomElement(template.names),
+          description: `Thi triển chiêu thức mạnh mẽ, gây ${damageRatio * 100}% sát thương tấn công lên ${isAoe ? 'tất cả kẻ địch' : 'mục tiêu'}. ${Math.random() > 0.6 ? 'Có thể gây hiệu ứng đặc biệt.' : ''} Tiêu tốn ${furyCost} nộ.`,
+          type: 'ultimate',
+          damageRatio: damageRatio,
+          furyCost: furyCost,
+          isAoe: isAoe,
+        }
+      }
+
+      function generatePassiveSkill() {
+        const template = skillTemplates.passive
+        const effect = getRandomElement(template.effects)
+        const name = getRandomElement(template.names)
+
+        let description = ''
+        let skillData = { type: 'passive' }
+
+        switch (effect) {
+          case 'lifesteal':
+            const lifesteal = getRandomValue(10, 20)
+            description = `Mỗi lần tấn công, hút máu bằng ${lifesteal}% sát thương gây ra.`
+            skillData.lifesteal = lifesteal / 100
+            break
+          case 'defense':
+            const defense = getRandomValue(15, 30)
+            description = `Giảm ${defense}% sát thương nhận vào.`
+            skillData.defenseBonus = defense / 100
+            break
+          case 'speed':
+            const speed = getRandomValue(10, 25)
+            description = `Tăng ${speed}% tốc độ.`
+            skillData.speedBonus = speed / 100
+            break
+          default:
+            description = 'Hiệu ứng thụ động đặc biệt.'
+            skillData.effect = effect
+        }
+
+        return {
+          name: name,
+          description: description,
+          ...skillData,
+        }
+      }
+
+      function generateActivePassiveSkill() {
+        const template = skillTemplates.activePassive
+        const trigger = getRandomElement(template.triggers)
+        const name = getRandomElement(template.names)
+
+        let description = ''
+        let skillData = {
+          type: 'active-passive',
+          trigger: trigger,
+        }
+
+        switch (trigger) {
+          case 'onLowHp':
+            const spdBonus = getRandomValue(15, 25)
+            const furyGain = getRandomValue(10, 20)
+            description = `Khi HP dưới 50%, tốc độ tăng ${spdBonus}% và nhận thêm ${furyGain} nộ mỗi lượt.`
+            skillData.buff = { spd: spdBonus / 100 }
+            skillData.furyGain = furyGain
+            break
+          case 'onHighHp':
+            const atkBonus = getRandomValue(20, 35)
+            description = `Khi HP trên 80%, tăng ${atkBonus}% sát thương.`
+            skillData.buff = { atk: atkBonus / 100 }
+            break
+          case 'onDamaged':
+            const counterDamage = getRandomValue(50, 100)
+            description = `Khi nhận sát thương, phản đòn ${counterDamage}% sát thương tấn công.`
+            skillData.counterDamage = counterDamage / 100
+            break
+          default:
+            description = 'Kích hoạt hiệu ứng đặc biệt khi điều kiện được đáp ứng.'
+            skillData.effect = 'special'
+        }
+
+        return {
+          name: name,
+          description: description,
+          ...skillData,
+        }
+      }
+
+      function generateHero(forcedFaction = null, forcedRarity = null) {
+        // Use forced values or random selection
+        const faction = forcedFaction || getRandomElement(factions)
+        const rarity = forcedRarity || getRandomElement(rarities)
+        const heroClass = getRandomElement(classes)
+        const name = getRandomElement(heroNames[faction])
+        const stats = generateStats(rarity, heroClass)
+
+        return {
+          rarity: rarity,
+          name: name,
+          faction: faction,
+          class: heroClass,
+          atk: stats.atk,
+          hp: stats.hp,
+          spd: stats.spd,
+          skills: {
+            basic: generateBasicSkill(),
+            ultimate: generateUltimateSkill(),
+            passive: generatePassiveSkill(),
+            activePassive: generateActivePassiveSkill(),
+          },
+        }
+      }
+
+      function generateHeroes() {
+        const count = parseInt(document.getElementById('heroCount').value) || 1
+
+        if (count === 1) {
+          currentHero = generateHero()
+          displayHero(currentHero)
+          displayJSON(currentHero)
+          document.getElementById('batchResults').style.display = 'none'
+        } else {
+          generateBatch(count)
+        }
+      }
+
+      function showBatchControls() {
+        const controls = document.getElementById('batchControls')
+        controls.style.display = controls.style.display === 'none' ? 'block' : 'none'
+      }
+
+      function generateBatch(customCount = null) {
+        const count = customCount || parseInt(document.getElementById('batchCount').value) || 200
+
+        if (count < 5 || count > 1000) {
+          alert('Số lượng phải từ 5 đến 1000!')
+          return
+        }
+
+        // Create balanced distributions
+        const factionDistribution = createBalancedDistribution(count)
+        const rarityDistribution = createRarityDistribution(count)
+
+        // Generate heroes with balanced distribution
+        allGeneratedHeroes = []
+        for (let i = 0; i < count; i++) {
+          const hero = generateHero(factionDistribution[i], rarityDistribution[i])
+          allGeneratedHeroes.push(hero)
+        }
+
+        displayBatchResults(allGeneratedHeroes)
+        document.getElementById('heroDisplay').style.display = 'none'
+        document.getElementById('jsonOutput').style.display = 'none'
+        document.getElementById('exportBtn').style.display = 'block'
+      }
+
+      function displayBatchResults(heroes) {
+        // Calculate statistics
+        const stats = calculateStats(heroes)
+        displayStats(stats)
+        displayBatchHeroes(heroes)
+
+        document.getElementById('batchResults').style.display = 'block'
+        document.querySelector('.export-btn').style.display = 'block'
+      }
+
+      function calculateStats(heroes) {
+        const stats = {
+          total: heroes.length,
+          factions: {},
+          rarities: {},
+          classes: {},
+        }
+
+        // Initialize counters
+        factions.forEach((f) => (stats.factions[f] = 0))
+        rarities.forEach((r) => (stats.rarities[r] = 0))
+        classes.forEach((c) => (stats.classes[c] = 0))
+
+        // Count statistics
+        heroes.forEach((hero) => {
+          stats.factions[hero.faction]++
+          stats.rarities[hero.rarity]++
+          stats.classes[hero.class]++
+        })
+
+        return stats
+      }
+
+      function displayStats(stats) {
+        const html = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${stats.total}</div>
+                        <div class="stat-label">Tổng tướng</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${Object.keys(stats.factions).length}</div>
+                        <div class="stat-label">Phe</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${Object.keys(stats.rarities).length}</div>
+                        <div class="stat-label">Độ hiếm</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${Object.keys(stats.classes).length}</div>
+                        <div class="stat-label">Lớp</div>
+                    </div>
+                </div>
+                
+                <h4 style="margin: 20px 0 10px 0; color: #2c3e50;">📊 Phân phối theo phe:</h4>
+                ${Object.entries(stats.factions)
+                  .map(
+                    ([faction, count]) => `
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span>${faction}</span>
+                            <span>${count} (${((count / stats.total) * 100).toFixed(1)}%)</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${(count / stats.total) * 100}%"></div>
+                        </div>
+                    </div>
+                `,
+                  )
+                  .join('')}
+                
+                <h4 style="margin: 20px 0 10px 0; color: #2c3e50;">⭐ Phân phối theo độ hiếm:</h4>
+                ${Object.entries(stats.rarities)
+                  .map(
+                    ([rarity, count]) => `
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span>${rarity}</span>
+                            <span>${count} (${((count / stats.total) * 100).toFixed(1)}%)</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${(count / stats.total) * 100}%"></div>
+                        </div>
+                    </div>
+                `,
+                  )
+                  .join('')}
+            `
+
+        document.getElementById('summaryStats').innerHTML = html
+      }
+
+      function displayBatchHeroes(heroes) {
+        const html = heroes
+          .map((hero) => {
+            const factionClass = hero.faction.toLowerCase().replace(' ', '-')
+            return `
+                    <div class="hero-card-mini ${factionClass}">
+                        <div class="hero-mini-header">
+                            <div class="hero-mini-name">${hero.name}</div>
+                            <div class="hero-mini-rarity ${hero.rarity}">${hero.rarity}</div>
+                        </div>
+                        <div class="hero-mini-info">
+                            <div class="mini-stat">
+                                <span>Phe:</span>
+                                <span>${hero.faction}</span>
+                            </div>
+                            <div class="mini-stat">
+                                <span>Lớp:</span>
+                                <span>${hero.class}</span>
+                            </div>
+                            <div class="mini-stat">
+                                <span>ATK:</span>
+                                <span>${hero.atk}</span>
+                            </div>
+                            <div class="mini-stat">
+                                <span>HP:</span>
+                                <span>${hero.hp}</span>
+                            </div>
+                            <div class="mini-stat">
+                                <span>SPD:</span>
+                                <span>${hero.spd}</span>
+                            </div>
+                        </div>
+                    </div>
+                `
+          })
+          .join('')
+
+        document.getElementById('batchHeroes').innerHTML = html
+      }
+
+      function exportAllToJSON() {
+        if (allGeneratedHeroes.length === 0) {
+          alert('Chưa có dữ liệu để export!')
+          return
+        }
+
+        const jsonString = JSON.stringify(allGeneratedHeroes, null, 2)
+
+        // Create and download file
+        const blob = new Blob([jsonString], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `heroes_batch_${allGeneratedHeroes.length}.json`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+
+        alert(`Đã export ${allGeneratedHeroes.length} tướng thành công!`)
+      }
+
+      function displayHero(hero) {
+        const factionClass = hero.faction.toLowerCase().replace(' ', '-')
+
+        const html = `
+                <div class="hero-card ${factionClass}">
+                    <div class="hero-header">
+                        <div class="hero-name">${hero.name}</div>
+                        <div class="hero-rarity ${hero.rarity}">${hero.rarity}</div>
+                    </div>
+                    
+                    <div class="hero-info">
+                        <div class="info-item">
+                            <span class="info-label">Phe:</span>
+                            <span class="info-value">${hero.faction}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Lớp:</span>
+                            <span class="info-value">${hero.class}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Tấn công:</span>
+                            <span class="info-value">${hero.atk}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Máu:</span>
+                            <span class="info-value">${hero.hp}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Tốc độ:</span>
+                            <span class="info-value">${hero.spd}</span>
+                        </div>
+                    </div>
+
+                    <div class="skills-section">
+                        <h3 class="skills-title">⚔️ Kỹ năng</h3>
+                        
+                        <div class="skill basic">
+                            <div class="skill-name">🗡️ ${hero.skills.basic.name} (Cơ bản)</div>
+                            <div class="skill-description">${hero.skills.basic.description}</div>
+                        </div>
+
+                        <div class="skill ultimate">
+                            <div class="skill-name">💥 ${hero.skills.ultimate.name} (Tuyệt kỹ)</div>
+                            <div class="skill-description">${hero.skills.ultimate.description}</div>
+                        </div>
+
+                        <div class="skill passive">
+                            <div class="skill-name">🛡️ ${hero.skills.passive.name} (Thụ động)</div>
+                            <div class="skill-description">${hero.skills.passive.description}</div>
+                        </div>
+
+                        <div class="skill active-passive">
+                            <div class="skill-name">⚡ ${hero.skills.activePassive.name} (Kích hoạt)</div>
+                            <div class="skill-description">${hero.skills.activePassive.description}</div>
+                        </div>
+                    </div>
+                </div>
+            `
+
+        document.getElementById('heroDisplay').innerHTML = html
+        document.getElementById('heroDisplay').style.display = 'block'
+      }
+
+      function displayJSON(hero) {
+        const jsonString = JSON.stringify(hero, null, 2)
+        document.getElementById('jsonContent').textContent = jsonString
+        document.getElementById('jsonOutput').style.display = 'block'
+      }
+
+      function copyToClipboard() {
+        const jsonContent = document.getElementById('jsonContent').textContent
+        navigator.clipboard.writeText(jsonContent).then(() => {
+          alert('JSON đã được copy vào clipboard!')
+        })
+      }
+
+      // Generate first hero on load
+      generateHeroes()
+    </script>
+  </body>
+</html>

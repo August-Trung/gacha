@@ -1,6 +1,12 @@
 <template>
-  <div class="log" ref="logEl">
-    <div v-for="(l, i) in log" :key="i" class="log-entry">{{ l }}</div>
+  <div class="log-container">
+    <div class="log-header">
+      <h3>Nhật ký trận đấu</h3>
+      <button @click="clearLog" class="clear-log-btn">Xóa log</button>
+    </div>
+    <div class="log" ref="logEl">
+      <div v-for="(l, i) in log" :key="i" class="log-entry">{{ l }}</div>
+    </div>
   </div>
 </template>
 
@@ -11,7 +17,13 @@ const props = defineProps({
   log: Array,
 })
 
+const emit = defineEmits(['clear-log'])
+
 const logEl = ref(null)
+
+function clearLog() {
+  emit('clear-log')
+}
 
 watch(
   () => props.log,
@@ -27,6 +39,32 @@ watch(
 </script>
 
 <style scoped>
+.log-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.clear-log-btn {
+  padding: 5px 10px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.clear-log-btn:hover {
+  background-color: #d32f2f;
+}
+
 .log {
   height: 250px;
   overflow-y: auto;

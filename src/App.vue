@@ -18,14 +18,67 @@
       <section class="inventory-section">
         <h2 class="section-title">Kho Thẻ</h2>
 
+        <div class="inventory-filters">
+          <div class="filter-group">
+            <label>Phe phái:</label>
+            <button
+              v-for="faction in uniqueFactions"
+              :key="faction"
+              @click="selectFilter('faction', faction)"
+              :class="{ active: filters.faction === faction }"
+            >
+              {{ faction }}
+            </button>
+            <button @click="clearFilter('faction')" :class="{ active: filters.faction === null }">
+              Tất cả
+            </button>
+          </div>
+
+          <div class="filter-group">
+            <label>Hạng:</label>
+            <button
+              v-for="rarity in uniqueRarities"
+              :key="rarity"
+              @click="selectFilter('rarity', rarity)"
+              :class="{ active: filters.rarity === rarity }"
+            >
+              {{ rarity }}
+            </button>
+            <button @click="clearFilter('rarity')" :class="{ active: filters.rarity === null }">
+              Tất cả
+            </button>
+          </div>
+
+          <div class="filter-group">
+            <label>Hệ:</label>
+            <button
+              v-for="heroClass in uniqueClasses"
+              :key="heroClass"
+              @click="selectFilter('class', heroClass)"
+              :class="{ active: filters.class === heroClass }"
+            >
+              {{ heroClass }}
+            </button>
+            <button @click="clearFilter('class')" :class="{ active: filters.class === null }">
+              Tất cả
+            </button>
+          </div>
+
+          <div class="search-group">
+            <label>Tìm kiếm:</label>
+            <input type="text" v-model="filters.search" placeholder="Nhập tên tướng..." />
+          </div>
+        </div>
+
         <div class="inventory-grid" @drop="handleDropToInventory" @dragover.prevent>
           <HeroCard
-            v-for="inst in inventory"
+            v-for="inst in filteredInventory"
             :key="inst.id"
             :hero="inst"
             class="clickable"
             draggable="true"
             @dragstart="handleDragStart($event, inst, 'inventory')"
+            @show-details="showHeroDetails"
           />
         </div>
       </section>
@@ -44,6 +97,7 @@
             }
           "
           @dragstart="handleDragStart"
+          @show-details="showHeroDetails"
         />
       </div>
 
@@ -53,7 +107,7 @@
         <div class="enemy-board">
           <div v-for="i in 9" :key="i" class="slot">
             <template v-if="enemyTeam[i - 1]">
-              <HeroCard :hero="enemyTeam[i - 1]" />
+              <HeroCard :hero="enemyTeam[i - 1]" @show-details="showHeroDetails" />
             </template>
             <span v-else class="placeholder">Trống</span>
           </div>
@@ -72,8 +126,10 @@
         <button class="primary" :disabled="!canBattle" @click="startBattle">Bắt đầu PK</button>
         <label class="chk"><input type="checkbox" v-model="fast" /> Chế độ nhanh</label>
       </div>
-      <BattleLog :log="battleLog" />
+      <BattleLog :log="battleLog" @clear-log="clearBattleLog" />
     </section>
+
+    <HeroDetailsModal v-if="selectedHero" :hero="selectedHero" @close="selectedHero = null" />
   </div>
 </template>
 
@@ -84,14 +140,50 @@ import Gacha from './components/Gacha.vue'
 import HeroCard from './components/HeroCard.vue'
 import TeamBuilder from './components/TeamBuilder.vue'
 import BattleLog from './components/BattleLog.vue'
+import HeroDetailsModal from './components/HeroDetailsModal.vue'
 
-// Basic Data
 const gems = ref(2000)
 const inventory = reactive([])
 const myTeam = reactive(Array(9).fill(null))
 const enemyTeam = reactive(Array(9).fill(null))
 const battleLog = ref([])
 const fast = ref(true)
+const selectedHero = ref(null)
+
+const filters = reactive({
+  faction: null,
+  rarity: null,
+  class: null,
+  search: '',
+})
+
+const uniqueFactions = computed(() => [...new Set(heroPool.map((h) => h.faction))])
+const uniqueRarities = computed(() => [...new Set(heroPool.map((h) => h.rarity))])
+const uniqueClasses = computed(() => [...new Set(heroPool.map((h) => h.class))])
+
+function showHeroDetails(hero) {
+  selectedHero.value = hero
+}
+
+function selectFilter(type, value) {
+  filters[type] = filters[type] === value ? null : value
+}
+
+function clearFilter(type) {
+  filters[type] = null
+}
+
+const filteredInventory = computed(() => {
+  return inventory.filter((hero) => {
+    const byFaction = filters.faction ? hero.faction === filters.faction : true
+    const byRarity = filters.rarity ? hero.rarity === filters.rarity : true
+    const byClass = filters.class ? hero.class === filters.class : true
+    const bySearch = filters.search
+      ? hero.name.toLowerCase().includes(filters.search.toLowerCase())
+      : true
+    return byFaction && byRarity && byClass && bySearch
+  })
+})
 
 const canBattle = computed(() => {
   const myTeamCount = myTeam.filter((hero) => hero !== null).length
@@ -103,17 +195,14 @@ onMounted(() => {
   generateEnemyTeam()
 })
 
-// Gems
 function addGems() {
   gems.value += 100000
 }
 
-// Gacha & Hero Logic
 function addHeroToInventory(hero) {
   inventory.push(hero)
 }
 
-// Drag & Drop
 function handleDragStart(event, hero, source, index = -1) {
   event.dataTransfer.setData('hero', JSON.stringify(hero))
   event.dataTransfer.setData('source', source)
@@ -131,7 +220,6 @@ function handleDropToInventory(event) {
   }
 }
 
-// Team Builder & Enemy Team
 function generateEnemyTeam() {
   for (let i = 0; i < 9; i++) {
     enemyTeam[i] = null
@@ -160,19 +248,20 @@ function generateEnemyTeam() {
     enemyTeam[slot] = {
       ...base,
       id: -i - 1,
-      atk: Math.round(base.atk * (0.9 + Math.random() * 0.2)),
-      hp: Math.round(base.hp * (0.9 + Math.random() * 0.2)),
+      atk: base.atk,
+      hp: base.hp,
+      spd: base.spd,
       lv: 1,
       stars,
     }
   }
 }
 
-// Battle Simulation
 async function startBattle() {
   battleLog.value = []
   const myLiveTeam = myTeam.filter(Boolean).map(cloneUnit)
   const enemyLiveTeam = enemyTeam.filter(Boolean).map(cloneUnit)
+
   if (myLiveTeam.length === 0 || enemyLiveTeam.length === 0) {
     log('Vui lòng xếp đủ đội hình và tạo đội hình địch!')
     return
@@ -183,22 +272,41 @@ async function startBattle() {
 
   myLiveTeam.forEach((hero) => {
     if (myBonuses[hero.faction]) {
-      const bonusValue = (myBonuses[hero.faction] - 1) * 100
+      const bonusValue = myBonuses[hero.faction] * 100 - 100
       hero.atk = Math.round(hero.atk * myBonuses[hero.faction])
       hero.hp = Math.round(hero.hp * myBonuses[hero.faction])
       log(
         `Team Bạn: Tướng ${hero.name} nhận bonus phe ${hero.faction} (+${bonusValue}% ATK và HP)!`,
       )
     }
+    // Áp dụng chỉ số từ Passive Skill
+    if (hero.skills.passive.teamSpdBuff) {
+      log(
+        `Team Bạn: ${hero.name} áp dụng kỹ năng nội tại "${hero.skills.passive.name}" cho toàn đội, tăng tốc độ ${hero.skills.passive.teamSpdBuff * 100}%.`,
+      )
+      myLiveTeam.forEach((ally) => {
+        ally.spd += Math.round(ally.spd * hero.skills.passive.teamSpdBuff)
+      })
+    }
   })
+
   enemyLiveTeam.forEach((hero) => {
     if (enemyBonuses[hero.faction]) {
-      const bonusValue = (enemyBonuses[hero.faction] - 1) * 100
+      const bonusValue = enemyBonuses[hero.faction] * 100 - 100
       hero.atk = Math.round(hero.atk * enemyBonuses[hero.faction])
       hero.hp = Math.round(hero.hp * enemyBonuses[hero.faction])
       log(
         `Team Địch: Tướng ${hero.name} nhận bonus phe ${hero.faction} (+${bonusValue}% ATK và HP)!`,
       )
+    }
+    // Áp dụng chỉ số từ Passive Skill
+    if (hero.skills.passive.teamSpdBuff) {
+      log(
+        `Team Địch: ${hero.name} áp dụng kỹ năng nội tại "${hero.skills.passive.name}" cho toàn đội, tăng tốc độ ${hero.skills.passive.teamSpdBuff * 100}%.`,
+      )
+      enemyLiveTeam.forEach((ally) => {
+        ally.spd += Math.round(ally.spd * hero.skills.passive.teamSpdBuff)
+      })
     }
   })
 
@@ -222,14 +330,44 @@ async function startBattle() {
       const target = pickTarget(foes, attacker.class)
       if (!target) continue
 
-      const { dmg, crit } = computeDamage(attacker, target)
-      const counterMultiplier = getFactionCounter(attacker.faction, target.faction)
-      const finalDamage = Math.round(dmg * counterMultiplier)
+      let damage = 0
+      let skillName = ''
+      let isUltimate = false
 
+      // Check for ultimate skill
+      if (attacker.currentFury >= 100) {
+        isUltimate = true
+        skillName = attacker.skills.ultimate.name
+        damage = attacker.atk * attacker.skills.ultimate.damageRatio
+        attacker.currentFury = 0
+        log(`${step.side}·${attacker.name} tung Kỹ năng nộ: "${skillName}"!`)
+      } else {
+        // Basic attack
+        skillName = attacker.skills.basic.name
+        damage = attacker.atk * attacker.skills.basic.damageRatio
+        attacker.currentFury += attacker.skills.basic.furyGain
+        log(`${step.side}·${attacker.name} sử dụng Kỹ năng đánh thường: "${skillName}".`)
+      }
+
+      // Check for crit
+      const crit = Math.random() < 0.15
+      if (crit) {
+        damage *= 1.5
+      }
+
+      // Faction counter bonus
+      const counterMultiplier = getFactionCounter(attacker.faction, target.faction)
+      if (counterMultiplier > 1) {
+        damage *= counterMultiplier
+      }
+
+      const finalDamage = Math.round(damage)
       target.hp = Math.max(0, target.hp - finalDamage)
+
       log(
         `${step.side}·${attacker.name} tấn công → ${target.name} (-${finalDamage} HP)${crit ? ' (CRIT)' : ''}${counterMultiplier > 1 ? ' (Khắc chế!)' : ''} [${target.hp} HP còn lại]`,
       )
+
       if (!fast.value) await sleep(350)
     }
     round++
@@ -269,21 +407,13 @@ function getFactionBonus(team) {
 
 function getFactionCounter(attackerFaction, targetFaction) {
   if (factionCounters[attackerFaction] === targetFaction) {
-    return 1.2 // Gây thêm 20% sát thương
+    return 1.2
   }
   return 1
 }
 
 function cloneUnit(u) {
   return JSON.parse(JSON.stringify(u))
-}
-
-function computeDamage(att, tgt) {
-  const mult = { SSS: 2.0, SS: 1.8, S: 1.6, A: 1.35, B: 1.15, C: 1.0 }[att.rarity]
-  let dmg = Math.round(att.atk * mult * (0.9 + Math.random() * 0.2))
-  const crit = Math.random() < 0.15
-  if (crit) dmg = Math.round(dmg * 1.5)
-  return { dmg, crit }
 }
 
 function pickTarget(arr, attackerClass) {
@@ -311,10 +441,14 @@ function log(s) {
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
 }
+
+function clearBattleLog() {
+  battleLog.value.length = 0
+}
 </script>
 
 <style>
-/* Giữ nguyên CSS cũ, chỉ cập nhật phần enemy-board */
+/* Giữ nguyên CSS cũ */
 body {
   background-color: #f0f2f5;
   color: #333;
@@ -406,11 +540,10 @@ body {
   gap: 12px;
   margin-top: 8px;
 }
-/* Sửa lỗi bố cục cho các slot trong đội địch */
 .enemy-board .slot {
   width: 100px;
   height: 120px;
-  margin: 0 auto; /* Căn giữa thẻ */
+  margin: 0 auto;
   border: 2px dashed #d1d5db;
   border-radius: 12px;
   display: flex;
@@ -444,7 +577,6 @@ body {
 .clickable {
   cursor: pointer;
 }
-/* Battle Section */
 .battle-controls {
   display: flex;
   align-items: center;
@@ -455,5 +587,58 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.inventory-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: #eef1f4;
+}
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.filter-group label,
+.search-group label {
+  font-weight: bold;
+  color: #555;
+  white-space: nowrap;
+}
+.inventory-filters button {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+.inventory-filters button:hover {
+  background-color: #f0f0f0;
+  border-color: #888;
+}
+.inventory-filters button.active {
+  background-color: #4c87e4;
+  color: #fff;
+  border-color: #4c87e4;
+  font-weight: bold;
+}
+.search-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.search-group input {
+  flex-grow: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  min-width: 150px;
 }
 </style>

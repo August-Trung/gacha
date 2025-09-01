@@ -13,6 +13,7 @@
           <HeroCard
             :hero="team[i - 1]"
             @dragstart="handleDragStart($event, team[i - 1], 'team', i - 1)"
+            @show-details="showHeroDetails"
             draggable="true"
             class="draggable"
           />
@@ -37,7 +38,7 @@ const props = defineProps({
   inventory: Array,
   team: Array,
 })
-const emit = defineEmits(['update:team', 'dragstart'])
+const emit = defineEmits(['update:team', 'dragstart', 'show-details'])
 
 const formations = [
   [0, 1, 3, 4, 5],
@@ -89,6 +90,10 @@ function loadFormation(formation) {
     }
   })
   emit('update:team', newTeam)
+}
+
+function showHeroDetails(hero) {
+  emit('show-details', hero)
 }
 </script>
 
