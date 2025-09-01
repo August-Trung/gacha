@@ -435,7 +435,21 @@ async function startBattle() {
       const finalDamage = Math.round(damage)
       target.hp = Math.max(0, target.hp - finalDamage)
 
-      // Xử lý kỹ năng nội tại (Lifesteal)
+      log({
+        type: 'action',
+        isAlly: step.isAlly,
+        actor: attacker.name,
+        skillType: skillType,
+        skillName: skillName,
+        target: target.name,
+        damage: finalDamage,
+        remainingHp: target.hp,
+        isCrit: isCrit,
+        isCounter: isCounter,
+      })
+
+      // Xử lý kỹ năng nội tại (Lifesteal) - Đặt ở đây để nó xảy ra sau khi sát thương được gây ra.
+      // Actor của log phải là người gây ra sát thương, và mục tiêu của hiệu ứng là chính họ.
       if (attacker.skills.passive?.lifesteal && finalDamage > 0) {
         const lifestealAmount = Math.round(finalDamage * attacker.skills.passive.lifesteal)
         attacker.hp += lifestealAmount
@@ -449,9 +463,11 @@ async function startBattle() {
         })
       }
 
-      // Xử lý kỹ năng Phản đòn (Counter-attack)
-      if (target.skills.activePassive?.trigger === 'onDamaged' && finalDamage > 0) {
-        const counterDamage = Math.round(attacker.atk * target.skills.activePassive.counterDamage)
+      // Xử lý kỹ năng Phản đòn (Counter-attack) - Chỉ xảy ra nếu mục tiêu còn sống
+      // Actor của log phải là người phản đòn (tướng bị tấn công), và mục tiêu của hiệu ứng là tướng tấn công ban đầu.
+      if (target.hp > 0 && target.skills.activePassive?.trigger === 'onDamaged') {
+        // Sát thương phản đòn phải dựa trên chỉ số tấn công của tướng phản đòn (target.atk)
+        const counterDamage = Math.round(target.atk * target.skills.activePassive.counterDamage)
         attacker.hp = Math.max(0, attacker.hp - counterDamage)
         log({
           type: 'special-effect',
@@ -462,19 +478,6 @@ async function startBattle() {
           target: attacker.name,
         })
       }
-
-      log({
-        type: 'action',
-        isAlly: step.isAlly,
-        actor: attacker.name,
-        skillType: skillType,
-        skillName: skillName,
-        target: target.name,
-        damage: finalDamage,
-        remainingHp: target.hp,
-        isCrit: isCrit,
-        isCounter: isCounter,
-      })
 
       if (!fast.value) await sleep(350)
     }

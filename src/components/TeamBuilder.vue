@@ -95,6 +95,7 @@ function removeHero(index) {
 }
 
 function handleDrop(event, index) {
+  event.stopPropagation()
   const draggedHero = JSON.parse(event.dataTransfer.getData('hero'))
   const draggedSource = event.dataTransfer.getData('source')
   const draggedIndex = parseInt(event.dataTransfer.getData('index'))
