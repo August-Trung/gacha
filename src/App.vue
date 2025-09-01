@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container" @drop="handleDropAnywhere" @dragover.prevent>
     <header class="topbar">
       <h1 class="title">⚔️ Card PK – Evolved</h1>
 
@@ -88,6 +88,14 @@
       <div class="team-builder-section">
         <h2 class="section-title">Đội Của Bạn</h2>
 
+        <div class="team-actions">
+          <button @click="clearTeam">Xóa toàn bộ</button>
+          <button @click="setFormation('cross')">Chữ Thập</button>
+          <button @click="setFormation('cross-x')">Chữ X</button>
+          <button @click="setFormation('double-t-left')">T ngang 2 đầu (trái)</button>
+          <button @click="setFormation('double-t-right')">T ngang 2 đầu (phải)</button>
+        </div>
+
         <TeamBuilder
           :inventory="inventory"
           :team="myTeam"
@@ -97,7 +105,10 @@
             }
           "
           @dragstart="handleDragStart"
+          @open-modal="openModalForSlot"
           @show-details="showHeroDetails"
+          @hero-dropped="removeHeroFromInventory"
+          @hero-selected-from-modal="removeHeroFromInventory"
         />
       </div>
 
@@ -128,6 +139,13 @@
       </div>
       <BattleLog :log="battleLog" @clear-log="clearBattleLog" />
     </section>
+
+    <HeroSelectionModal
+      v-if="showInventoryModal"
+      :inventory="filteredInventory"
+      @select-hero="selectHeroFromModal"
+      @close="showInventoryModal = false"
+    />
 
     <HeroDetailsModal v-if="selectedHero" :hero="selectedHero" @close="selectedHero = null" />
   </div>
@@ -161,8 +179,43 @@ const uniqueFactions = computed(() => [...new Set(heroPool.map((h) => h.faction)
 const uniqueRarities = computed(() => [...new Set(heroPool.map((h) => h.rarity))])
 const uniqueClasses = computed(() => [...new Set(heroPool.map((h) => h.class))])
 
+const showInventoryModal = ref(false)
+const selectedSlotIndex = ref(null)
+
+function openModalForSlot(index) {
+  selectedSlotIndex.value = index
+  showInventoryModal.value = true
+}
+
+function selectHeroFromModal(hero) {
+  if (selectedSlotIndex.value !== null) {
+    // Logic để loại bỏ tướng khỏi vị trí cũ nếu nó đã ở trong đội hình
+    const existingIndex = myTeam.findIndex((h) => h && h.id === hero.id)
+    if (existingIndex !== -1) {
+      myTeam[existingIndex] = null
+    }
+
+    myTeam[selectedSlotIndex.value] = hero
+  }
+  showInventoryModal.value = false
+  selectedSlotIndex.value = null
+
+  // THÊM LOGIC NÀY: Xóa tướng đã chọn khỏi kho
+  const inventoryIndex = inventory.findIndex((h) => h.id === hero.id)
+  if (inventoryIndex !== -1) {
+    inventory.splice(inventoryIndex, 1)
+  }
+}
+
 function showHeroDetails(hero) {
   selectedHero.value = hero
+}
+
+function removeHeroFromInventory(heroId) {
+  const index = inventory.findIndex((h) => h.id === heroId)
+  if (index !== -1) {
+    inventory.splice(index, 1)
+  }
 }
 
 function selectFilter(type, value) {
@@ -467,6 +520,72 @@ function sleep(ms) {
 function clearBattleLog() {
   battleLog.value.length = 0
 }
+
+function handleDropAnywhere(event) {
+  const draggedSource = event.dataTransfer.getData('source')
+  if (draggedSource === 'team') {
+    const draggedHero = JSON.parse(event.dataTransfer.getData('hero'))
+    const draggedIndex = parseInt(event.dataTransfer.getData('index'))
+
+    // Thêm tướng vào inventory
+    inventory.push(draggedHero)
+
+    // Xóa tướng khỏi đội hình
+    myTeam[draggedIndex] = null
+  }
+}
+
+// === CÁC HÀM MỚI ĐÃ CẬP NHẬT ===
+
+// Hàm xóa toàn bộ tướng khỏi đội hình và trả về kho
+function clearTeam() {
+  myTeam.forEach((hero) => {
+    if (hero) {
+      inventory.push(hero)
+    }
+  })
+  myTeam.splice(0, myTeam.length, ...Array(9).fill(null))
+}
+
+// Hàm thiết lập đội hình theo các mẫu
+function setFormation(type) {
+  clearTeam() // Xóa đội hình cũ trước
+
+  let slotsToFill = []
+  const heroesToPlace = []
+
+  switch (type) {
+    case 'cross':
+      slotsToFill = [1, 3, 4, 5, 7]
+      break
+    case 'cross-x':
+      slotsToFill = [0, 2, 4, 6, 8]
+      break
+    case 'double-t-left':
+      slotsToFill = [0, 3, 4, 5, 6]
+      break
+    case 'double-t-right':
+      slotsToFill = [2, 3, 4, 5, 8]
+      break
+    default:
+      return
+  }
+
+  if (inventory.length < slotsToFill.length) {
+    log({ type: 'info', content: 'Kho của bạn không đủ tướng để xếp đội hình này!' })
+    return
+  }
+
+  // Lấy các tướng đầu tiên trong kho để xếp đội hình
+  for (let i = 0; i < slotsToFill.length; i++) {
+    heroesToPlace.push(inventory.shift())
+  }
+
+  // Cập nhật đội hình
+  slotsToFill.forEach((slot, index) => {
+    myTeam[slot] = heroesToPlace[index]
+  })
+}
 </script>
 
 <style>
@@ -662,5 +781,131 @@ body {
   border: 1px solid #ccc;
   font-size: 14px;
   min-width: 150px;
+}
+
+/* Add a media query to handle mobile devices */
+@media (max-width: 768px) {
+  /* Main layout changes */
+  .app-container {
+    padding: 10px;
+  }
+  .main-content {
+    grid-template-columns: 1fr; /* Stack columns vertically */
+  }
+  .builder-section {
+    flex-direction: column; /* Stack builder and enemy teams vertically */
+  }
+
+  /* Filter and search bar improvements */
+  .inventory-filters {
+    flex-direction: column; /* Stack filter groups vertically */
+  }
+  .filter-group {
+    /* You could also make this horizontally scrollable on mobile */
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .filter-group label {
+    flex-shrink: 0; /* Prevents the label from shrinking */
+  }
+
+  /* Make inventory grid flexible */
+  .inventory-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); /* Smaller cards on mobile */
+  }
+
+  /* Center the title and wallet on mobile for better balance */
+  .topbar {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+  .title {
+    font-size: 24px;
+  }
+}
+
+/* General improvements */
+body {
+  background-color: #f7f9fc;
+}
+
+.app-container {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.section-title {
+  position: relative;
+  padding-bottom: 5px;
+  margin-bottom: 20px;
+}
+
+/* Add a line under section titles for a cleaner look */
+.section-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 50px;
+  height: 3px;
+  background-color: #4c87e4;
+  border-radius: 2px;
+}
+
+.inventory-filters button {
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.inventory-filters button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.inventory-filters button.active {
+  background-color: #4c87e4;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.primary {
+  background-color: #4caf50;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: bold;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s;
+}
+
+.primary:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.primary:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.team-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+.team-actions button {
+  padding: 8px 16px;
+  background-color: #4c87e4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+.team-actions button:hover {
+  background-color: #3b6ab7;
 }
 </style>

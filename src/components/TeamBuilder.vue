@@ -1,145 +1,171 @@
 <template>
-  <div class="team-builder">
-    <div class="board">
-      <div
-        v-for="i in 9"
-        :key="i"
-        class="slot"
-        @drop="handleDrop($event, i - 1)"
-        @dragover.prevent
-        :class="{ selectable: team[i - 1] === null && team.filter(Boolean).length < 5 }"
-      >
-        <template v-if="team[i - 1]">
-          <HeroCard
-            :hero="team[i - 1]"
-            @dragstart="handleDragStart($event, team[i - 1], 'team', i - 1)"
-            @show-details="showHeroDetails"
-            draggable="true"
-            class="draggable"
-          />
-        </template>
-        <span v-else class="placeholder">Slot {{ i }}</span>
-      </div>
-    </div>
-    <div class="controls">
-      <button @click="clearTeam">Xóa toàn bộ</button>
-      <button v-for="(f, i) in formations" :key="i" @click="loadFormation(f)">
-        Bố trận {{ i + 1 }}
-      </button>
+  <div class="team-board">
+    <div
+      v-for="(hero, index) in team"
+      :key="index"
+      class="slot"
+      :class="{ filled: hero !== null }"
+      @drop="handleDrop($event, index)"
+      @dragover.prevent
+      @click="handleSlotClick(index, hero)"
+    >
+      <template v-if="hero">
+        <HeroCard
+          :hero="hero"
+          class="clickable"
+          draggable="true"
+          @dragstart="$emit('dragstart', $event, hero, 'team', index)"
+          @show-details="$emit('show-details', hero)"
+        />
+        <button class="remove-btn" @click.stop="removeHero(index)">×</button>
+      </template>
+      <span v-else class="placeholder">Trống</span>
     </div>
   </div>
+
+  <HeroSelectionModal
+    v-if="showModal"
+    :inventory="filteredInventory"
+    @select-hero="selectHeroFromModal"
+    @close="showModal = false"
+  />
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, defineProps, defineEmits, ref } from 'vue'
 import HeroCard from './HeroCard.vue'
+import HeroSelectionModal from './HeroSelectionModal.vue'
 
 const props = defineProps({
-  inventory: Array,
-  team: Array,
+  team: {
+    type: Array,
+    required: true,
+  },
+  inventory: {
+    type: Array,
+    required: true,
+  },
 })
-const emit = defineEmits(['update:team', 'dragstart', 'show-details'])
 
-const formations = [
-  [0, 1, 3, 4, 5],
-  [1, 2, 4, 6, 7],
-  [0, 2, 4, 6, 8],
-  [3, 4, 5, 7, 8],
-  [0, 1, 2, 3, 4],
-]
+const emits = defineEmits([
+  'update:team',
+  'dragstart',
+  'show-details',
+  'hero-dropped',
+  'hero-selected-from-modal',
+])
 
-function handleDragStart(event, hero, source, index) {
-  emit('dragstart', event, hero, source, index)
+const showModal = ref(false)
+const selectedSlotIndex = ref(null)
+
+const filteredInventory = computed(() => {
+  const teamHeroIds = new Set(props.team.filter((h) => h).map((h) => h.id))
+  return props.inventory.filter((h) => !teamHeroIds.has(h.id))
+})
+
+const myTeamCount = computed(() => props.team.filter((h) => h).length)
+
+function handleSlotClick(index, hero) {
+  // Chỉ mở modal nếu slot trống và đội hình chưa đủ 5 tướng
+  if (hero === null && myTeamCount.value < 5) {
+    selectedSlotIndex.value = index
+    showModal.value = true
+  }
 }
 
-function handleDrop(event, targetIndex) {
+function selectHeroFromModal(hero) {
+  const newTeam = [...props.team]
+  newTeam[selectedSlotIndex.value] = hero
+  emits('update:team', newTeam)
+  emits('hero-selected-from-modal', hero.id) // Phát ra sự kiện mới với ID của hero
+  showModal.value = false
+  selectedSlotIndex.value = null
+}
+
+function removeHero(index) {
+  const newTeam = [...props.team]
+  const heroToRemove = newTeam[index]
+
+  if (heroToRemove) {
+    // Add the hero back to the inventory
+    props.inventory.push(heroToRemove)
+    newTeam[index] = null
+    emits('update:team', newTeam)
+  }
+}
+
+function handleDrop(event, index) {
   const draggedHero = JSON.parse(event.dataTransfer.getData('hero'))
   const draggedSource = event.dataTransfer.getData('source')
   const draggedIndex = parseInt(event.dataTransfer.getData('index'))
 
-  if (!draggedHero) return
-
   const newTeam = [...props.team]
+
   if (draggedSource === 'inventory') {
-    if (newTeam[targetIndex] === null && newTeam.filter(Boolean).length < 5) {
-      const idx = props.inventory.findIndex((h) => h.id === draggedHero.id)
-      if (idx !== -1) {
-        newTeam[targetIndex] = props.inventory.splice(idx, 1)[0]
-        emit('update:team', newTeam)
-      }
+    // Chỉ cho phép thả nếu đội hình chưa đủ 5 tướng
+    if (myTeamCount.value < 5 && props.team[index] === null) {
+      const draggedHero = JSON.parse(event.dataTransfer.getData('hero'))
+      const newTeam = [...props.team]
+      newTeam[index] = draggedHero
+      emits('update:team', newTeam)
+      emits('hero-dropped', draggedHero.id)
     }
   } else if (draggedSource === 'team') {
-    const temp = newTeam[targetIndex]
-    newTeam[targetIndex] = draggedHero
-    newTeam[draggedIndex] = temp
-    emit('update:team', newTeam)
-  }
-}
-
-function clearTeam() {
-  props.team.filter(Boolean).forEach((hero) => props.inventory.push(hero))
-  emit('update:team', Array(9).fill(null))
-}
-
-function loadFormation(formation) {
-  clearTeam()
-  const newTeam = Array(9).fill(null)
-  formation.forEach((idx) => {
-    if (props.inventory.length > 0) {
-      newTeam[idx] = props.inventory.shift()
+    if (draggedIndex !== index) {
+      const existingHero = newTeam[index]
+      newTeam[index] = draggedHero
+      newTeam[draggedIndex] = existingHero
+      emits('update:team', newTeam)
     }
-  })
-  emit('update:team', newTeam)
-}
-
-function showHeroDetails(hero) {
-  emit('show-details', hero)
+  }
 }
 </script>
 
 <style scoped>
-/* Sửa lỗi bố cục cho các slot trong đội của bạn */
-.team-builder {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.board {
+.team-board {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+  margin-top: 8px;
 }
 .slot {
   position: relative;
-  width: 100px; /* Giới hạn kích thước slot */
-  height: 120px; /* Giới hạn kích thước slot */
-  margin: 0 auto; /* Căn giữa thẻ */
+  width: 100px;
+  height: 120px;
+  margin: 0 auto;
   border: 2px dashed #d1d5db;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  cursor: pointer; /* Add cursor pointer to indicate it's clickable */
 }
-.slot.selectable:hover {
-  background-color: #e3f2fd;
-  border-color: #4c87e4;
-}
-.slot.active {
-  border-style: solid;
-}
-.slot .hero-card {
-  width: 100%;
-  height: 100%;
+.slot.filled {
+  border: 2px solid transparent;
 }
 .placeholder {
   color: #9ca3af;
   font-size: 14px;
 }
-.controls {
+.remove-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
   justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 10;
+}
+.remove-btn:hover {
+  background-color: #ff1a1a;
 }
 </style>
