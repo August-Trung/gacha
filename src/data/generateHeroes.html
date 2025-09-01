@@ -522,7 +522,7 @@
             'Heal nhỏ',
           ],
           damageRatio: [0.8, 1.0, 1.2],
-          furyGain: [8, 10, 12],
+          furyGain: 25,
         },
         ultimate: {
           names: [
@@ -537,7 +537,7 @@
             'Siêu heal',
           ],
           damageRatio: [1.8, 2.0, 2.5, 3.0],
-          furyCost: [80, 100, 120],
+          furyCost: 100,
         },
         passive: {
           names: [
@@ -683,17 +683,17 @@
         const template = skillTemplates.basic
         return {
           name: getRandomElement(template.names),
-          description: `Tấn công mục tiêu phía trước, gây ${getRandomElement(template.damageRatio) * 100}% sát thương tấn công. Hồi ${getRandomElement(template.furyGain)} nộ.`,
+          description: `Tấn công mục tiêu phía trước, gây ${getRandomElement(template.damageRatio) * 100}% sát thương tấn công. Hồi ${template.furyGain} nộ.`,
           type: 'basic',
           damageRatio: getRandomElement(template.damageRatio),
-          furyGain: getRandomElement(template.furyGain),
+          furyGain: template.furyGain,
         }
       }
 
       function generateUltimateSkill() {
         const template = skillTemplates.ultimate
         const damageRatio = getRandomElement(template.damageRatio)
-        const furyCost = getRandomElement(template.furyCost)
+        const furyCost = template.furyCost
         const isAoe = Math.random() > 0.5
 
         return {

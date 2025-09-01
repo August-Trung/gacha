@@ -253,6 +253,7 @@ function generateEnemyTeam() {
       spd: base.spd,
       lv: 1,
       stars,
+      currentFury: 50, // Thêm dòng này để tướng địch bắt đầu với 50 nộ
     }
   }
 }
@@ -263,7 +264,10 @@ async function startBattle() {
   const enemyLiveTeam = enemyTeam.filter(Boolean).map(cloneUnit)
 
   if (myLiveTeam.length === 0 || enemyLiveTeam.length === 0) {
-    log('Vui lòng xếp đủ đội hình và tạo đội hình địch!')
+    log({
+      type: 'info',
+      content: 'Vui lòng xếp đủ đội hình và tạo đội hình địch!',
+    })
     return
   }
 
@@ -275,15 +279,17 @@ async function startBattle() {
       const bonusValue = myBonuses[hero.faction] * 100 - 100
       hero.atk = Math.round(hero.atk * myBonuses[hero.faction])
       hero.hp = Math.round(hero.hp * myBonuses[hero.faction])
-      log(
-        `Team Bạn: Tướng ${hero.name} nhận bonus phe ${hero.faction} (+${bonusValue}% ATK và HP)!`,
-      )
+      log({
+        type: 'team-bonus',
+        isAlly: true,
+        content: `Tướng ${hero.name} nhận bonus phe ${hero.faction} (+${bonusValue.toFixed(0)}% ATK và HP)!`,
+      })
     }
-    // Áp dụng chỉ số từ Passive Skill
-    if (hero.skills.passive.teamSpdBuff) {
-      log(
-        `Team Bạn: ${hero.name} áp dụng kỹ năng nội tại "${hero.skills.passive.name}" cho toàn đội, tăng tốc độ ${hero.skills.passive.teamSpdBuff * 100}%.`,
-      )
+    if (hero.skills.passive?.teamSpdBuff) {
+      log({
+        type: 'info',
+        content: `Team Bạn: ${hero.name} áp dụng kỹ năng nội tại "${hero.skills.passive.name}" cho toàn đội, tăng tốc độ ${hero.skills.passive.teamSpdBuff * 100}%.`,
+      })
       myLiveTeam.forEach((ally) => {
         ally.spd += Math.round(ally.spd * hero.skills.passive.teamSpdBuff)
       })
@@ -295,28 +301,31 @@ async function startBattle() {
       const bonusValue = enemyBonuses[hero.faction] * 100 - 100
       hero.atk = Math.round(hero.atk * enemyBonuses[hero.faction])
       hero.hp = Math.round(hero.hp * enemyBonuses[hero.faction])
-      log(
-        `Team Địch: Tướng ${hero.name} nhận bonus phe ${hero.faction} (+${bonusValue}% ATK và HP)!`,
-      )
+      log({
+        type: 'team-bonus',
+        isAlly: false,
+        content: `Tướng ${hero.name} nhận bonus phe ${hero.faction} (+${bonusValue.toFixed(0)}% ATK và HP)!`,
+      })
     }
-    // Áp dụng chỉ số từ Passive Skill
-    if (hero.skills.passive.teamSpdBuff) {
-      log(
-        `Team Địch: ${hero.name} áp dụng kỹ năng nội tại "${hero.skills.passive.name}" cho toàn đội, tăng tốc độ ${hero.skills.passive.teamSpdBuff * 100}%.`,
-      )
+    if (hero.skills.passive?.teamSpdBuff) {
+      log({
+        type: 'info',
+        content: `Team Địch: ${hero.name} áp dụng kỹ năng nội tại "${hero.skills.passive.name}" cho toàn đội, tăng tốc độ ${hero.skills.passive.teamSpdBuff * 100}%.`,
+      })
       enemyLiveTeam.forEach((ally) => {
         ally.spd += Math.round(ally.spd * hero.skills.passive.teamSpdBuff)
       })
     }
   })
 
-  log(`\n=== Trận đấu bắt đầu ===`)
+  log({ type: 'battle-start', content: `=== Trận đấu bắt đầu ===` })
+
   let round = 1
   while (myLiveTeam.some((u) => u.hp > 0) && enemyLiveTeam.some((u) => u.hp > 0) && round <= 20) {
-    log(`-- Vòng ${round} --`)
+    log({ type: 'round-start', content: `-- Vòng ${round} --` })
     const order = [
-      ...myLiveTeam.map((u) => ({ side: 'Bạn', u })),
-      ...enemyLiveTeam.map((u) => ({ side: 'Địch', u })),
+      ...myLiveTeam.map((u) => ({ side: 'Bạn', u, isAlly: true })),
+      ...enemyLiveTeam.map((u) => ({ side: 'Địch', u, isAlly: false })),
     ]
       .filter((x) => x.u.hp > 0)
       .sort((a, b) => b.u.spd - a.u.spd)
@@ -326,59 +335,70 @@ async function startBattle() {
       const attacker = step.u
       if (attacker.hp <= 0) continue
 
-      const foes = step.side === 'Bạn' ? enemyLiveTeam : myLiveTeam
+      const foes = step.isAlly ? enemyLiveTeam : myLiveTeam
       const target = pickTarget(foes, attacker.class)
       if (!target) continue
 
-      let damage = 0
       let skillName = ''
-      let isUltimate = false
+      let skillType = 'đánh thường'
+      let damage = 0
+      let furyChange = 0
 
-      // Check for ultimate skill
-      if (attacker.currentFury >= 100) {
-        isUltimate = true
+      if (attacker.currentFury >= attacker.skills.ultimate.furyCost) {
         skillName = attacker.skills.ultimate.name
+        skillType = 'nộ'
         damage = attacker.atk * attacker.skills.ultimate.damageRatio
-        attacker.currentFury = 0
-        log(`${step.side}·${attacker.name} tung Kỹ năng nộ: "${skillName}"!`)
+        furyChange = -attacker.skills.ultimate.furyCost
       } else {
-        // Basic attack
         skillName = attacker.skills.basic.name
+        skillType = 'đánh thường'
         damage = attacker.atk * attacker.skills.basic.damageRatio
-        attacker.currentFury += attacker.skills.basic.furyGain
-        log(`${step.side}·${attacker.name} sử dụng Kỹ năng đánh thường: "${skillName}".`)
+        furyChange = attacker.skills.basic.furyGain
       }
+      attacker.currentFury = Math.max(0, attacker.currentFury + furyChange)
 
-      // Check for crit
-      const crit = Math.random() < 0.15
-      if (crit) {
+      const isCrit = Math.random() < 0.15
+      if (isCrit) {
         damage *= 1.5
       }
 
-      // Faction counter bonus
       const counterMultiplier = getFactionCounter(attacker.faction, target.faction)
-      if (counterMultiplier > 1) {
+      const isCounter = counterMultiplier > 1
+      if (isCounter) {
         damage *= counterMultiplier
       }
 
       const finalDamage = Math.round(damage)
       target.hp = Math.max(0, target.hp - finalDamage)
 
-      log(
-        `${step.side}·${attacker.name} tấn công → ${target.name} (-${finalDamage} HP)${crit ? ' (CRIT)' : ''}${counterMultiplier > 1 ? ' (Khắc chế!)' : ''} [${target.hp} HP còn lại]`,
-      )
+      log({
+        type: 'action',
+        isAlly: step.isAlly,
+        actor: attacker.name,
+        skillType: skillType,
+        skillName: skillName,
+        target: target.name,
+        damage: finalDamage,
+        remainingHp: target.hp,
+        isCrit: isCrit,
+        isCounter: isCounter,
+      })
 
       if (!fast.value) await sleep(350)
     }
     round++
     if (!fast.value) await sleep(300)
   }
+
   const result = myLiveTeam.some((u) => u.hp > 0)
     ? 'BẠN THẮNG'
     : enemyLiveTeam.some((u) => u.hp > 0)
       ? 'BẠN THUA'
       : 'HÒA'
-  log(`=== Kết quả: ${result} ===`)
+  log({
+    type: 'battle-end',
+    content: `=== Kết quả: ${result} ===`,
+  })
 }
 
 function getFactionBonus(team) {
@@ -413,7 +433,9 @@ function getFactionCounter(attackerFaction, targetFaction) {
 }
 
 function cloneUnit(u) {
-  return JSON.parse(JSON.stringify(u))
+  const cloned = JSON.parse(JSON.stringify(u))
+  cloned.currentFury = 50 // Thêm dòng này để tướng bạn bắt đầu với 50 nộ
+  return cloned
 }
 
 function pickTarget(arr, attackerClass) {
