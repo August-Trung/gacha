@@ -18,6 +18,13 @@
       <section class="inventory-section">
         <h2 class="section-title">Kho Thẻ</h2>
 
+        <div class="inventory-info">
+          <span class="total-heroes">Tổng số tướng: {{ inventory.length }}</span>
+          <button class="sell-btn" @click="sellHeroes">
+            Bán tướng B, C (+{{ calculateSellGems() }} 💎)
+          </button>
+        </div>
+
         <div class="inventory-filters">
           <div class="filter-group">
             <label>Phe phái:</label>
@@ -105,7 +112,6 @@
             }
           "
           @dragstart="handleDragStart"
-          @open-modal="openModalForSlot"
           @show-details="showHeroDetails"
           @hero-dropped="removeHeroFromInventory"
           @hero-selected-from-modal="removeHeroFromInventory"
@@ -159,12 +165,14 @@ import HeroCard from './components/HeroCard.vue'
 import TeamBuilder from './components/TeamBuilder.vue'
 import BattleLog from './components/BattleLog.vue'
 import HeroDetailsModal from './components/HeroDetailsModal.vue'
+import HeroSelectionModal from './components/HeroSelectionModal.vue'
 
 const gems = ref(2000)
 const inventory = reactive([])
 const myTeam = reactive(Array(9).fill(null))
 const enemyTeam = reactive(Array(9).fill(null))
 const battleLog = ref([])
+const isBattleRunning = ref(false)
 const fast = ref(true)
 const selectedHero = ref(null)
 
@@ -312,6 +320,8 @@ function generateEnemyTeam() {
 }
 
 async function startBattle() {
+  if (isBattleRunning.value) return
+  isBattleRunning.value = true
   battleLog.value = []
   const myLiveTeam = myTeam.filter(Boolean).map(cloneUnit)
   const enemyLiveTeam = enemyTeam.filter(Boolean).map(cloneUnit)
@@ -321,6 +331,7 @@ async function startBattle() {
       type: 'info',
       content: 'Vui lòng xếp đủ đội hình và tạo đội hình địch!',
     })
+    isBattleRunning.value = false
     return
   }
 
@@ -424,6 +435,34 @@ async function startBattle() {
       const finalDamage = Math.round(damage)
       target.hp = Math.max(0, target.hp - finalDamage)
 
+      // Xử lý kỹ năng nội tại (Lifesteal)
+      if (attacker.skills.passive?.lifesteal && finalDamage > 0) {
+        const lifestealAmount = Math.round(finalDamage * attacker.skills.passive.lifesteal)
+        attacker.hp += lifestealAmount
+        log({
+          type: 'special-effect',
+          isAlly: step.isAlly,
+          actor: attacker.name,
+          effectName: 'Hút máu',
+          value: lifestealAmount,
+          target: attacker.name,
+        })
+      }
+
+      // Xử lý kỹ năng Phản đòn (Counter-attack)
+      if (target.skills.activePassive?.trigger === 'onDamaged' && finalDamage > 0) {
+        const counterDamage = Math.round(attacker.atk * target.skills.activePassive.counterDamage)
+        attacker.hp = Math.max(0, attacker.hp - counterDamage)
+        log({
+          type: 'special-effect',
+          isAlly: !step.isAlly,
+          actor: target.name,
+          effectName: 'Phản đòn',
+          value: counterDamage,
+          target: attacker.name,
+        })
+      }
+
       log({
         type: 'action',
         isAlly: step.isAlly,
@@ -452,6 +491,8 @@ async function startBattle() {
     type: 'battle-end',
     content: `=== Kết quả: ${result} ===`,
   })
+
+  isBattleRunning.value = false
 }
 
 function getFactionBonus(team) {
@@ -585,6 +626,35 @@ function setFormation(type) {
   slotsToFill.forEach((slot, index) => {
     myTeam[slot] = heroesToPlace[index]
   })
+}
+
+function sellHeroes() {
+  const heroesToKeep = []
+  let totalGemsGained = 0
+  inventory.forEach((hero) => {
+    if (hero.rarity === 'B') {
+      totalGemsGained += 500
+    } else if (hero.rarity === 'C') {
+      totalGemsGained += 100
+    } else {
+      heroesToKeep.push(hero)
+    }
+  })
+  gems.value += totalGemsGained
+  // Thay thế toàn bộ nội dung của inventory bằng mảng mới
+  inventory.splice(0, inventory.length, ...heroesToKeep)
+}
+
+const calculateSellGems = () => {
+  let totalGems = 0
+  inventory.forEach((hero) => {
+    if (hero.rarity === 'B') {
+      totalGems += 500
+    } else if (hero.rarity === 'C') {
+      totalGems += 100
+    }
+  })
+  return totalGems
 }
 </script>
 
@@ -907,5 +977,32 @@ body {
 }
 .team-actions button:hover {
   background-color: #3b6ab7;
+}
+
+.inventory-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.total-heroes {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #555;
+}
+
+.sell-btn {
+  background-color: #e74c3c;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.sell-btn:hover {
+  background-color: #c0392b;
 }
 </style>

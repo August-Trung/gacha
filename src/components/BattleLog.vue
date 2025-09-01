@@ -30,6 +30,16 @@
           <span v-if="l.isCrit" class="crit-info">(CRIT)</span>
           <span v-if="l.isCounter" class="counter-info">(Khắc chế!)</span>
         </div>
+        <div v-else-if="l.type === 'special-effect'" class="log-message special-effect-entry">
+          <span class="actor" :class="{ ally: l.isAlly, enemy: !l.isAlly }">{{ l.actor }}</span>
+          <span class="effect-info"> sử dụng hiệu ứng **"{{ l.effectName }}"** </span>
+          <span
+            class="value-info"
+            :class="{ heal: l.effectName === 'Hút máu' || l.effectName === 'Hồi máu' }"
+          >
+            → {{ l.target }} ({{ l.effectName === 'Phản đòn' ? '-' : '+' }}{{ l.value }} HP)
+          </span>
+        </div>
         <div v-else class="log-message">{{ l.content }}</div>
       </div>
     </div>
@@ -37,10 +47,13 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { defineProps, ref, watch, nextTick } from 'vue'
 
 const props = defineProps({
-  log: Array,
+  log: {
+    type: Array,
+    required: true,
+  },
 })
 
 const emit = defineEmits(['clear-log'])
